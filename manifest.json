@@ -1,29 +1,27 @@
 {
   "manifest_version": 2,
-  "name": "Amplifier  AMP/Canonical switcher",
+  "name": "Amplifier",
   "short_name": "Amplifier",
-  "description": "Quickly switch between canonical and AMP version of a page",
-  "version": "0.0.5",
-  "author": "John Pettitt",
+  "description": "Enable streamlined, easy-to-use web content on websites that offer it.",
+  "version": "1.0.0",
+  "author": "Amplifier Team",
   "icons": { 
            "48": "amplifier48.png",
           "128": "amplifier128.png" 
   },
   "background" : {
-    "scripts": ["background.js"],
-    "persistent": true
+    "persistent": true,
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*","https://*/*"],
       "js": ["amplifier.js"],
+      "matches": ["http://*/*","https://*/*"],
       "run_at" : "document_end"
     }
   ],
-  "page_action" :
-  {
+  "page_action" : {
     "default_icon" : "switcher.png",
-    "default_title" : "AMP version not detected."
-  },
-  "options_page" : "options.html"
+    "default_title" : "None."
+  }
 }
