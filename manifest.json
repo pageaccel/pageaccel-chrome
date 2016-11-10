@@ -10,7 +10,7 @@
           "128": "amplifier128.png" 
   },
   "background" : {
-    "persistent": true,
+    "persistent": false,
     "scripts": ["background.js"]
   },
   "content_scripts": [
@@ -23,5 +23,8 @@
   "page_action" : {
     "default_icon" : "switcher.png",
     "default_title" : "None."
-  }
+  },
+  "permissions": [
+    "storage"
+  ]
 }
