@@ -3,7 +3,7 @@
   "name": "Amplifier",
   "short_name": "Amplifier",
   "description": "Enable streamlined, easy-to-use web content on websites that offer it.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Amplifier Team",
   "icons": { 
            "48": "amplifier48.png",
