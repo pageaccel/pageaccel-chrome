@@ -27,16 +27,29 @@ along with Amplifier.  If not, see <http://www.gnu.org/licenses/>.
         amplifierOn: true,
         isamp : (document.querySelector("html[amp]") !== null ||  document.querySelector("html[⚡]") !== null)
     };
+    
+    chrome.runtime.sendMessage({
+      sentinel: "__AMPMESSAGE__",
+      method: "clear"
+    });
 
     if (amplink !== null) {
         amp.ampurl = amplink.href;
+        chrome.runtime.sendMessage({ sentinel: "__AMPMESSAGE__", method: "ampUrl", data: amplink.href });
         
     }
     if (canonical !== null) {
         amp.canonical = canonical.href;
+        chrome.runtime.sendMessage({ sentinel: "__AMPMESSAGE__", method: "canonicalUrl", data: canonical.href });
     }
    
     // send information about the current page to the processor
-    chrome.runtime.sendMessage(amp);
+    chrome.runtime.sendMessage({
+      sentinel: "__AMPMESSAGE__",
+      method: "onAmpPage",
+      data: document.querySelector("html[amp]") !== null ||  document.querySelector("html[⚡]") !== null
+    });
+    
+    
 
 })();
