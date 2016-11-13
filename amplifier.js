@@ -1,55 +1,68 @@
 /*
-(C) Portions copyright 2016 Taylor Raack.
-Some portions from public domain
+Copyright 2016 Taylor Raack <taylor@raack.info>.
 
-Amplifier is free software: you can redistribute it and/or modify
-it under the terms of the Affero GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+This file is part of Foobar.
 
-Amplifier is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-Affero GNU General Public License for more details.
+    Foobar is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-You should have received a copy of the Affero GNU General Public License
-along with Amplifier.  If not, see <http://www.gnu.org/licenses/>.
+    Foobar is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-(function() {
-    var amplink = document.querySelector("link[rel='amphtml']");
-    var canonical = document.querySelector("link[rel='canonical']");
-    
-    var  amp = {
-        sentinel: "__AMPLIFIER__",
-        ampurl : null,
-        canonical : null,
-        amplifierOn: true,
-        isamp : (document.querySelector("html[amp]") !== null ||  document.querySelector("html[⚡]") !== null)
-    };
-    
-    chrome.runtime.sendMessage({
-      sentinel: "__AMPMESSAGE__",
-      method: "clear"
-    });
+var observerConfiguration = { childList: true, subtree: true };
 
-    if (amplink !== null) {
-        amp.ampurl = amplink.href;
-        chrome.runtime.sendMessage({ sentinel: "__AMPMESSAGE__", method: "ampUrl", data: amplink.href });
-        
-    }
-    if (canonical !== null) {
-        amp.canonical = canonical.href;
-        chrome.runtime.sendMessage({ sentinel: "__AMPMESSAGE__", method: "canonicalUrl", data: canonical.href });
-    }
-   
-    // send information about the current page to the processor
-    chrome.runtime.sendMessage({
-      sentinel: "__AMPMESSAGE__",
-      method: "onAmpPage",
-      data: document.querySelector("html[amp]") !== null ||  document.querySelector("html[⚡]") !== null
+function createMutationObserver(baseElement, childTag, callback) {
+  var mutationObserver = new MutationObserver(function(mutations, observer) {
+    mutations.forEach(function(mutation) {
+      for (var i = 0; i < mutation.addedNodes.length; i++) {
+        if (mutation.addedNodes[i].tagName === childTag && callback(mutation.addedNodes[i])) {
+         observer.disconnect();
+        }
+      }
     });
-    
-    
+  });
+  mutationObserver.observe(baseElement, observerConfiguration);
+}
 
-})();
+// clear out canonical and amp urls
+chrome.runtime.sendMessage({
+  sentinel: "__SIMPLIFYMESSAGE__",
+  method: "clear"
+});
+
+// look for amp header
+chrome.runtime.sendMessage({
+  sentinel: "__SIMPLIFYMESSAGE__",
+  method: "onAmpPage",
+  data: document.documentElement.hasAttribute('amp') || document.documentElement.hasAttribute('⚡')
+});
+
+// look for new canonical and amp urls
+createMutationObserver(document.documentElement, "HEAD", function (headTag) {
+  var node = headTag.querySelector('link[rel="amphtml"]');
+  if(node) {
+    chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "ampUrl", data: node.getAttribute("href") });
+  }
+  node = headTag.querySelector('link[rel="canonical"]');
+  if(node) {
+    chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "canonicalUrl", data: node.getAttribute("href") });
+  }
+  createMutationObserver(headTag, "LINK", function (linkTag) {
+    if (linkTag.getAttribute('rel').toLowerCase() === 'amphtml') {
+      chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "ampUrl", data: linkTag.getAttribute("href") });
+    } else if (linkTag.getAttribute('rel').toLowerCase() === 'canonical') {
+      chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "canonicalUrl", data: linkTag.getAttribute("href") });
+    }
+    return false;
+  });
+  
+  return true;
+});
