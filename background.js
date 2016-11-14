@@ -55,14 +55,14 @@ function updatePageActionIcon(tab, status) {
     console.log("canonical url is " + status.canonicalUrl + " and we are on an amp page")
     // we are currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tab.id, path : 'canonical.png' });
-    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the Canonical version of this page' });
+    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the Standard version of this page' });
     chrome.pageAction.show(tab.id);
     console.log("setting to is on amp page icon");
   } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage) {
     console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
     // we are not currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tab.id, path : 'amplify.png' });
-    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the AMP version of this page' });
+    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the Simplified version of this page' });
     chrome.pageAction.show(tab.id);
     console.log("setting to is on canonical page icon");
   }
@@ -174,14 +174,12 @@ function handleClear(tabId) {
 function handleGetEnabled(sender, callback) {
   getSiteStatus(function(sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      console.log("tabs url " + tabs[0].url);
       var domain = new URL(tabs[0].url).hostname;
-      console.log("domain is " + domain);
-      console.log(callback);
       callback((domain in sitestatus ? sitestatus[domain] : true) ? "Simplified view is Enabled" : "Simplified view is Disabled");
-      console.log("callback is done");
     });
   });
+  // must return true to indicate that callback is going to be called later, asynchronously
+  return true;
 }
 
 function handleToggleEnabled(sender, callback) {
@@ -191,7 +189,6 @@ function handleToggleEnabled(sender, callback) {
       // flip domain enabled, or set to false if it's never been set
       sitestatus[domain] = (domain in sitestatus) ? !sitestatus[domain] : false;
       console.log("setting simplify enabled for " + domain + " to " + sitestatus[domain]);
-      console.log(sitestatus);
       setSiteStatus(sitestatus, function() {
         // reload the page, which will force the proper loading to occur again
         console.log("reloading");
@@ -206,6 +203,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     return;
   }
   console.log("received action " + message.method + " with data " + message.data + " url " + sender.url);
+  var response = false;
   switch (message.method) {
     case "clear":
       handleClear(sender.tab.id);
@@ -220,7 +218,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       handleCanonicalUrl(sender, message.data);
       break;
     case "getEnabled":
-      handleGetEnabled(sender, sendResponse);
+      response = handleGetEnabled(sender, sendResponse);
       break;
     case "toggleEnabled":
       handleToggleEnabled(sender, sendResponse);
@@ -228,6 +226,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       break;
   }
   console.log("completed action " + message.method);
+  return response;
 });
 
 //
