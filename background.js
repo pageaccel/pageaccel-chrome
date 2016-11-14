@@ -229,36 +229,3 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   }
   console.log("completed action " + message.method);
 });
-
-//
-/*chrome.pageAction.onClicked.addListener(function(tab) {
-  getTabStatus(function(tabStatus) {
-    var amp = tabStatus[tab.id];
-    status.enabled = !status.enabled;
-    tabStatus[tab.id] = amp;
-    setTabStatus(tabStatus, function() {
-      if (typeof(amp) !== 'undefined') {
-        
-        if (status.onAmpPage != null && status.onAmpPage) {
-          // the current state is amp on - switch it to canonical
-          if (status.canonicalUrl != null) {
-            if (tab.url != status.canonicalUrl) {
-              console.log("switching to canonical page");
-              chrome.tabs.update(tab.id, { url : status.canonicalUrl });
-            }
-          }
-        } else if (status.onAmpPage != null && !status.onAmpPage) {
-          // current state is amp off - switch to amp on
-          if (status.ampUrl != null) {
-            if (tab.url != status.ampUrl) {
-              console.log("switching to amp page");
-              chrome.tabs.update(tab.id, { url : status.ampUrl });
-            }
-          }
-        }
-      } else {
-        // missing amp state for this tab - bug?
-      }
-    });
-  });
-});*/
