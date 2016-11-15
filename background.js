@@ -18,17 +18,7 @@ This file is part of Foobar.
  */
 
 
-/*
- * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
- * 
- * If an AMP document exists which is an alternative representation of a canonical document, then the canonical document should point to the AMP document via a link tag with the relation "amphtml".
- * for example: <link rel="amphtml" href="https://www.example.com/url/to/amp/document.html">
- * 
- * The AMP document itself is expected to point back to its canonical document document via a link tag with the relation "canonical".
- * for example: <link rel="canonical" href="https://www.example.com/url/to/canonical/document.html">
- * 
- * If a single resource is simultaneously the AMP and the canonical document, the canonical relation should point to itself--no "amphtml" relation is required.
- */
+
 var working = false
 
 function getFromStorage(item, callback) {
@@ -61,9 +51,9 @@ function setSiteStatus(siteStatus, callback) {
   setToStorage('sitestatus', siteStatus, callback);
 }
 
-function updatePageActionIcon(tabId, status) {
+function updatePageActionIcon(tabId, senderUrl, status) {
   console.log("updating page action icon; canonical: " + status.canonicalUrl + "; amp: " + status.ampUrl + "; on amp page: " + status.onAmpPage); 
-  if (status.canonicalUrl != null && status.onAmpPage != null && status.onAmpPage) {
+  if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage) {
     console.log("canonical url is " + status.canonicalUrl + " and we are on an amp page")
     // we are currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'canonical.png' });
@@ -97,11 +87,23 @@ function isSimplifyEnabled(sitestatus, url) {
   return enabled;
 }
 
+/*
+ * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
+ * 
+ * If an AMP document exists which is an alternative representation of a canonical document, then the canonical document should point to the AMP document via a link tag with the relation "amphtml".
+ * for example: <link rel="amphtml" href="https://www.example.com/url/to/amp/document.html">
+ * 
+ * The AMP document itself is expected to point back to its canonical document document via a link tag with the relation "canonical".
+ * for example: <link rel="canonical" href="https://www.example.com/url/to/canonical/document.html">
+ * 
+ * If a single resource is simultaneously the AMP and the canonical document, the canonical relation should point to itself--no "amphtml" relation is required.
+ */
+
 function processTabState(tabId, senderUrl) {
   console.log("processing tab state");
   getTabAndSiteStatus(function(tabStatus, sitestatus) {
     var status = tabId in tabStatus ? tabStatus[tabId] : {};
-    if (status.canonicalUrl != null && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
+    if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
       console.log("switching to canonical url")
       working = false;
       chrome.tabs.update(tabId, { url : status.canonicalUrl });
@@ -110,7 +112,7 @@ function processTabState(tabId, senderUrl) {
       working = false;
       chrome.tabs.update(tabId, { url : status.ampUrl });
     } else {
-      updatePageActionIcon(tabId, status);
+      updatePageActionIcon(tabId, senderUrl, status);
       working = false;
     }
   });
