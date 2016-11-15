@@ -17,18 +17,30 @@ This file is part of Foobar.
     along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
+/*
+ * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
+ * 
+ * If an AMP document exists which is an alternative representation of a canonical document, then the canonical document should point to the AMP document via a link tag with the relation "amphtml".
+ * for example: <link rel="amphtml" href="https://www.example.com/url/to/amp/document.html">
+ * 
+ * The AMP document itself is expected to point back to its canonical document document via a link tag with the relation "canonical".
+ * for example: <link rel="canonical" href="https://www.example.com/url/to/canonical/document.html">
+ * 
+ * If a single resource is simultaneously the AMP and the canonical document, the canonical relation should point to itself--no "amphtml" relation is required.
+ */
 var working = false
 
 function getFromStorage(item, callback) {
   chrome.storage.local.get(item, function(items) { callback(item in items ? items[item] : {}); });
 }
 
-function getTabStatus(callback) {
-  getFromStorage('tabstatus', callback);
+function getTabAndSiteStatus(callback) {
+  chrome.storage.local.get(['tabstatus','sitestatus'], function(items) { callback('tabstatus' in items ? items['tabstatus'] : {}, 'sitestatus' in items ? items['sitestatus'] : {}); });
 }
 
-function getBothStatus(callback) {
-  chrome.storage.local.get(['tabstatus','sitestatus'], function(items) { callback('tabstatus' in items ? items['tabstatus'] : {}, 'sitestatus' in items ? items['sitestatus'] : {}); });
+function getTabStatus(callback) {
+  getFromStorage('tabstatus', callback);
 }
 
 function getSiteStatus(callback) {
@@ -49,21 +61,21 @@ function setSiteStatus(siteStatus, callback) {
   setToStorage('sitestatus', siteStatus, callback);
 }
 
-function updatePageActionIcon(tab, status) {
+function updatePageActionIcon(tabId, status) {
   console.log("updating page action icon; canonical: " + status.canonicalUrl + "; amp: " + status.ampUrl + "; on amp page: " + status.onAmpPage); 
   if (status.canonicalUrl != null && status.onAmpPage != null && status.onAmpPage) {
     console.log("canonical url is " + status.canonicalUrl + " and we are on an amp page")
     // we are currently viewing an amp page
-    chrome.pageAction.setIcon({ tabId : tab.id, path : 'canonical.png' });
-    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the Standard version of this page' });
-    chrome.pageAction.show(tab.id);
+    chrome.pageAction.setIcon({ tabId : tabId, path : 'canonical.png' });
+    chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Standard version of this page' });
+    chrome.pageAction.show(tabId);
     console.log("setting to is on amp page icon");
   } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage) {
     console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
     // we are not currently viewing an amp page
-    chrome.pageAction.setIcon({ tabId : tab.id, path : 'amplify.png' });
-    chrome.pageAction.setTitle({ tabId : tab.id, title : 'Show the Simplified version of this page' });
-    chrome.pageAction.show(tab.id);
+    chrome.pageAction.setIcon({ tabId : tabId, path : 'amplify.png' });
+    chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Simplified version of this page' });
+    chrome.pageAction.show(tabId);
     console.log("setting to is on canonical page icon");
   }
 }
@@ -85,80 +97,48 @@ function isSimplifyEnabled(sitestatus, url) {
   return enabled;
 }
 
-function handleOnAmpPage(sender, onAmpPage) {
-  if (onAmpPage == null) throw "onAmpPage cannot be null";
-  var tab = sender.tab;
-  console.log("got new amp page " + onAmpPage);
+function processTabState(tabId, senderUrl) {
+  console.log("processing tab state");
+  getTabAndSiteStatus(function(tabStatus, sitestatus) {
+    var status = tabId in tabStatus ? tabStatus[tabId] : {};
+    if (status.canonicalUrl != null && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
+      console.log("switching to canonical url")
+      working = false;
+      chrome.tabs.update(tabId, { url : status.canonicalUrl });
+    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl)) {
+      console.log("switching to amp url")
+      working = false;
+      chrome.tabs.update(tabId, { url : status.ampUrl });
+    } else {
+      updatePageActionIcon(tabId, status);
+      working = false;
+    }
+  });
+}
+
+function handleUpdate(sender, key, value) {
+  if (value == null) throw key + " cannot be null";
+  console.log("got new " + key + ": " + value);
   checkAndWork(function() {
-    getBothStatus(function(tabStatus, sitestatus) {
-      var status = tabStatus[tab.id];
-      if (typeof(status) == 'undefined') {
-        status = { enabled : true };
-      }
-      if (status.canonicalUrl != null && onAmpPage && !isSimplifyEnabled(sitestatus, sender.url)) {
-        console.log("switching to canonical url")
-        working = false;
-        chrome.tabs.update(tab.id, { url : status.canonicalUrl });
-      } else if (status.ampUrl != null && !onAmpPage && isSimplifyEnabled(sitestatus, sender.url)) {
-        console.log("switching to amp url")
-        working = false;
-        chrome.tabs.update(tab.id, { url : status.ampUrl });
-      } else {
-        status.onAmpPage = onAmpPage;
-        tabStatus[tab.id] = status;
-        updatePageActionIcon(tab, status);
-        setTabStatus(tabStatus, function() { working = false; });
-      }
+    getTabStatus(function(tabStatus) {
+      var status = sender.tab.id in tabStatus ? tabStatus[sender.tab.id] : {};
+      status[key] = value;
+      tabStatus[sender.tab.id] = status;
+      setTabStatus(tabStatus, function() { processTabState(sender.tab.id, sender.url); });
     });
   });
+}
+
+function handleOnAmpPage(sender, onAmpPage) {
+  handleUpdate(sender, 'onAmpPage', onAmpPage);
 }
 
 function handleCanonicalUrl(sender, canonicalUrl) {
-  if (canonicalUrl == null) throw "canonicalUrl cannot be null"
-  var tab = sender.tab;
-  console.log("got new canonicalUrl " + canonicalUrl);
-  checkAndWork(function() {
-    getBothStatus(function(tabStatus, sitestatus) {
-      var status = tabStatus[tab.id];
-      if (typeof(status) == 'undefined') {
-        status = { enabled : true };
-      }
-      if (status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, sender.url)) {
-        console.log("switching to canonical url");
-        working = false;
-        chrome.tabs.update(tab.id, { url : canonicalUrl });
-      } else {
-        status.canonicalUrl = canonicalUrl;
-        tabStatus[tab.id] = status;
-        updatePageActionIcon(tab, status);
-        setTabStatus(tabStatus, function() { working = false; });
-      }
-    });
-  });
+  handleUpdate(sender, 'canonicalUrl', canonicalUrl);
 }
 
 function handleAmpUrl(sender, ampUrl) {
-  if (ampUrl == null) throw "ampUrl cannot be null"
-  var tab = sender.tab;
-  console.log("got new ampUrl " + ampUrl);
-  checkAndWork(function() {
-    getBothStatus(function(tabStatus, sitestatus) {
-      var status = tabStatus[tab.id];
-      if (typeof(status) == 'undefined') {
-        status = {};
-      }
-      if (status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, sender.url)) {
-        console.log("switching to amp url");
-        working = false;
-        chrome.tabs.update(tab.id, { url : ampUrl });
-      } else {
-        status.ampUrl = ampUrl;
-        tabStatus[tab.id] = status;
-        updatePageActionIcon(tab, status);
-        setTabStatus(tabStatus, function() { working = false });
-      }
-    });
-  });
+  handleUpdate(sender, 'ampUrl', ampUrl);
 }
 
 function handleClear(tabId) {
