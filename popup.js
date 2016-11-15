@@ -22,8 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('enabledStatus').innerHTML = msg;
   });
   document.getElementById('enabledStatus').addEventListener('click', function() {
-    chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "toggleEnabled"}, function(msg) {
-      document.getElementById('enabledStatus').innerHTML = msg;
-    });
+    chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "toggleEnabled"});
+    setTimeout(function() {window.close()}, 250);
   });
 });
