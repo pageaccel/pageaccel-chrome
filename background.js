@@ -17,9 +17,8 @@ This file is part of Foobar.
     along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-
-var working = false
+var working = false;
+var publicSuffixList = this.publicSuffixList;
 
 function getFromStorage(item, callback) {
   chrome.storage.local.get(item, function(items) { callback(item in items ? items[item] : {}); });
@@ -49,6 +48,10 @@ function setTabStatus(tabStatus, callback) {
 
 function setSiteStatus(siteStatus, callback) {
   setToStorage('sitestatus', siteStatus, callback);
+}
+
+function primePublicSuffixList() {
+  publicSuffixList.parse("com", punycode.toASCII)
 }
 
 function updatePageActionIcon(tabId, senderUrl, status) {
@@ -81,7 +84,8 @@ function checkAndWork(fcn) {
 
 function isSimplifyEnabled(sitestatus, url) {
   console.log("checking simplify enabled for url " + url);
-  var domain = new URL(url).hostname;
+  var hostname = new URL(url).hostname;
+  var domain = publicSuffixList.getDomain(hostname);
   var enabled = domain in sitestatus ? sitestatus[domain] : true;
   console.log("simplify " + (enabled ? "enabled" : "disabled") + " for domain " + domain);
   return enabled;
@@ -210,3 +214,5 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   console.log("completed action " + message.method);
   return response;
 });
+
+primePublicSuffixList();
