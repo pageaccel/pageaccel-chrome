@@ -63,7 +63,7 @@ function updatePageActionIcon(tabId, senderUrl, status) {
     chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Standard version of this page' });
     chrome.pageAction.show(tabId);
     console.log("setting to is on amp page icon");
-  } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage) {
+  } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && !isAmpBlacklisted(status.ampUrl)) {
     console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
     // we are not currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'amplify.png' });
@@ -91,6 +91,18 @@ function isSimplifyEnabled(sitestatus, url) {
   return enabled;
 }
 
+var blacklistedDomains = new Set();
+blacklistedDomains.add("nytimes.com");
+
+function isAmpBlacklisted(url) {
+  // some websites' amp pages 302 redirect back to the canonical page automatically (such as mobile.nytimes.com when using a desktop browser user agent)
+  // i experimented with modifying the user agent header to a mobile header for those requests, but chrome disallows header manipulation from "event pages" (this type of extension)
+  // so we're going to blacklist some urls here so we don't attempt to AMP load them.
+  var hostname = new URL(url).hostname;
+  var domain = publicSuffixList.getDomain(hostname);
+  return blacklistedDomains.has(domain);
+}
+
 /*
  * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
  * 
@@ -111,7 +123,7 @@ function processTabState(tabId, senderUrl) {
       console.log("switching to canonical url")
       working = false;
       chrome.tabs.update(tabId, { url : status.canonicalUrl });
-    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl)) {
+    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl) && !isAmpBlacklisted(status.ampUrl)) {
       console.log("switching to amp url")
       working = false;
       chrome.tabs.update(tabId, { url : status.ampUrl });
@@ -160,7 +172,8 @@ function handleClear(tabId) {
 function handleGetEnabled(sender, callback) {
   getSiteStatus(function(sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      var domain = new URL(tabs[0].url).hostname;
+      var hostname = new URL(tabs[0].url).hostname;
+      var domain = publicSuffixList.getDomain(hostname);
       callback((domain in sitestatus ? sitestatus[domain] : true) ? "Simplified view is Enabled" : "Simplified view is Disabled");
     });
   });
@@ -171,7 +184,8 @@ function handleGetEnabled(sender, callback) {
 function handleToggleEnabled(sender, callback) {
   getSiteStatus(function(sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      var domain = new URL(tabs[0].url).hostname;
+      var hostname = new URL(tabs[0].url).hostname;
+      var domain = publicSuffixList.getDomain(hostname);
       // flip domain enabled, or set to false if it's never been set
       sitestatus[domain] = (domain in sitestatus) ? !sitestatus[domain] : false;
       console.log("setting simplify enabled for " + domain + " to " + sitestatus[domain]);
