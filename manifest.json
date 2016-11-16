@@ -11,7 +11,7 @@
   },
   "background" : {
     "persistent": false,
-    "scripts": ["background.js"]
+    "scripts": ["punycode.js","publicsuffixlist.js","background.js"]
   },
   "content_scripts": [
     {
