@@ -1,20 +1,20 @@
 /*
 Copyright 2016 Taylor Raack.
 
-This file is part of Foobar.
+This file is part of PageAccel.
 
-    Foobar is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+PageAccel is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    Foobar is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+PageAccel is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with PageAccel.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 var working = false;
@@ -67,7 +67,7 @@ function updatePageActionIcon(tabId, senderUrl, status) {
     console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
     // we are not currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'amplify.png' });
-    chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Simplified version of this page' });
+    chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the accelerated version of this page' });
     chrome.pageAction.show(tabId);
     console.log("setting to is on canonical page icon");
   }

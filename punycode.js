@@ -1,6 +1,6 @@
 /*! https://mths.be/punycode v1.4.1
 
-This file is part of Foobar.
+This file is part of PageAccel.
 
 X11 license
 
