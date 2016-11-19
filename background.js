@@ -93,6 +93,7 @@ function isSimplifyEnabled(sitestatus, url) {
 
 var blacklistedDomains = new Set();
 blacklistedDomains.add("nytimes.com");
+blacklistedDomains.add("allrecipes.com");
 
 function isAmpBlacklisted(url) {
   // some websites' amp pages 302 redirect back to the canonical page automatically (such as mobile.nytimes.com when using a desktop browser user agent)
