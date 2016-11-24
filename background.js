@@ -105,11 +105,14 @@ chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = data.tabId in tabStatus ? tabStatus[data.tabId] : {};
-      var lastUrl = 'lasturl' in status ? status['lasturl'] : "";
-      if (lastUrl == data.url) {
-        status['lasturl'] = "";
+      var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
+      if (lastUrl.length > 0 && lastUrl[lastUrl.length-1] == data.url) {
+        lastUrl.pop();
+        status['swithedurls'] = lastUrl;
         status['goback'] = true;
-        console.log("setting go back to true; lasturl was " + lastUrl);
+        status['pageaccelblock'] = true;
+        console.log("blocking future changes");
+        console.log("setting go back to true; lasturl was " + data.url);
         tabStatus[data.tabId] = status;
         setTabStatus(tabStatus, function() { working = false; });
       } else {
@@ -159,7 +162,11 @@ function processTabState(tabId, senderUrl) {
     var status = tabId in tabStatus ? tabStatus[tabId] : {};
     if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
       console.log("switching to canonical url");
-      status['lasturl'] = senderUrl;
+      var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
+      if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
+        lastUrl.push(senderUrl);
+      }
+      status['swithedurls'] = lastUrl;
       tabStatus[tabId] = status;
       console.log("setting previous url to " + senderUrl);
       setTabStatus(tabStatus, function() {
@@ -168,7 +175,11 @@ function processTabState(tabId, senderUrl) {
       });
     } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl) && !isAmpBlacklisted(status.ampUrl)) {
       console.log("switching to amp url");
-      status['lasturl'] = senderUrl;
+      var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
+      if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
+        lastUrl.push(senderUrl);
+      }
+      status['swithedurls'] = lastUrl;
       tabStatus[tabId] = status;
       console.log("setting previous url to " + senderUrl);
       setTabStatus(tabStatus, function() {
@@ -217,10 +228,10 @@ function handleClear(tabId) {
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = tabId in tabStatus ? tabStatus[tabId] : {};
-      var lasturl = 'lasturl' in status ? status['lasturl'] : "";
+      var lasturl = 'swithedurls' in status ? status['swithedurls'] : [];
       var goback = 'goback' in status ? status['goback'] : false;
       var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
-      status = {'lasturl' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock};
+      status = {'swithedurls' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock};
       tabStatus[tabId] = status;
       setTabStatus(tabStatus, function() { working = false });
     });
@@ -234,10 +245,6 @@ function handleGetBack(sender, callback) {
       var status = sender.tab.id in tabStatus ? tabStatus[sender.tab.id] : {};
       var oldGoBack = 'goback' in status ? status['goback'] : false;
       status['goback'] = false;
-      if (oldGoBack == true) {
-        console.log("blocking future changes");
-        status['pageaccelblock'] = true;
-      }
       tabStatus[sender.tab.id] = status;
       setTabStatus(tabStatus, function() {
         console.log("going back " + oldGoBack + " from " + theurl);
