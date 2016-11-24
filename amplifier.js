@@ -32,6 +32,12 @@ function createMutationObserver(baseElement, childTag, callback) {
   mutationObserver.observe(baseElement, observerConfiguration);
 }
 
+chrome.runtime.sendMessage({ sentinel: "__SIMPLIFYMESSAGE__", method: "getBack"}, function(goBack) {
+  if(goBack == true) {
+    window.history.back();
+  }
+});
+
 // clear out canonical and amp urls
 chrome.runtime.sendMessage({
   sentinel: "__SIMPLIFYMESSAGE__",

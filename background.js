@@ -19,13 +19,19 @@ along with PageAccel.  If not, see <http://www.gnu.org/licenses/>.
 
 var working = false;
 var publicSuffixList = this.publicSuffixList;
+var thestorage = window.localStorage;
 
-function getFromStorage(item, callback) {
-  chrome.storage.local.get(item, function(items) { callback(item in items ? items[item] : {}); });
+function getFromStorage(key, callback) {
+  var item = JSON.parse(thestorage.getItem(key));
+  callback(item != null ? item : {});
 }
 
 function getTabAndSiteStatus(callback) {
-  chrome.storage.local.get(['tabstatus','sitestatus'], function(items) { callback('tabstatus' in items ? items['tabstatus'] : {}, 'sitestatus' in items ? items['sitestatus'] : {}); });
+  var tabstatus = thestorage.getItem('tabstatus');
+  if (tabstatus == null) tabstatus = '{}';
+  var sitestatus = thestorage.getItem('sitestatus');
+  if (sitestatus == null) sitestatus = '{}';
+  callback(JSON.parse(tabstatus), JSON.parse(sitestatus));
 }
 
 function getTabStatus(callback) {
@@ -36,10 +42,9 @@ function getSiteStatus(callback) {
   getFromStorage('sitestatus', callback);
 }
 
-function setToStorage(item, value, callback) {
-  var toStore = {};
-  toStore[item] = value;
-  chrome.storage.local.set(toStore, callback);
+function setToStorage(key, value, callback) {
+  thestorage.setItem(key, JSON.stringify(value));
+  callback();
 }
 
 function setTabStatus(tabStatus, callback) {
@@ -95,6 +100,38 @@ var blacklistedDomains = new Set();
 blacklistedDomains.add("nytimes.com");
 blacklistedDomains.add("allrecipes.com");
 
+chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
+  var thewindow = this;
+  checkAndWork(function() {
+    getTabStatus(function(tabStatus) {
+      var status = data.tabId in tabStatus ? tabStatus[data.tabId] : {};
+      var lastUrl = 'lasturl' in status ? status['lasturl'] : "";
+      if (lastUrl == data.url) {
+        status['lasturl'] = "";
+        status['goback'] = true;
+        console.log("setting go back to true; lasturl was " + lastUrl);
+        tabStatus[data.tabId] = status;
+        setTabStatus(tabStatus, function() { working = false; });
+      } else {
+        working = false;
+      }
+    });
+  });
+  
+  // do whatever else I need this specific tab in question to do
+});
+
+chrome.webNavigation.onCompleted.addListener(function(data) {
+  checkAndWork(function() {
+    getTabStatus(function(tabStatus) {
+      var status = data.tabId in tabStatus ? tabStatus[data.tabId] : {};
+      status['pageaccelblock'] = false;
+      tabStatus[data.tabId] = status;
+      setTabStatus(tabStatus, function() { working = false; });
+    });
+  });
+});
+
 function isAmpBlacklisted(url) {
   // some websites' amp pages 302 redirect back to the canonical page automatically (such as mobile.nytimes.com when using a desktop browser user agent)
   // i experimented with modifying the user agent header to a mobile header for those requests, but chrome disallows header manipulation from "event pages" (this type of extension)
@@ -121,13 +158,23 @@ function processTabState(tabId, senderUrl) {
   getTabAndSiteStatus(function(tabStatus, sitestatus) {
     var status = tabId in tabStatus ? tabStatus[tabId] : {};
     if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
-      console.log("switching to canonical url")
-      working = false;
-      chrome.tabs.update(tabId, { url : status.canonicalUrl });
+      console.log("switching to canonical url");
+      status['lasturl'] = senderUrl;
+      tabStatus[tabId] = status;
+      console.log("setting previous url to " + senderUrl);
+      setTabStatus(tabStatus, function() {
+        working = false;
+        chrome.tabs.update(tabId, { url : status.canonicalUrl });
+      });
     } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl) && !isAmpBlacklisted(status.ampUrl)) {
-      console.log("switching to amp url")
-      working = false;
-      chrome.tabs.update(tabId, { url : status.ampUrl });
+      console.log("switching to amp url");
+      status['lasturl'] = senderUrl;
+      tabStatus[tabId] = status;
+      console.log("setting previous url to " + senderUrl);
+      setTabStatus(tabStatus, function() {
+        working = false;
+        chrome.tabs.update(tabId, { url : status.ampUrl });
+      });
     } else {
       updatePageActionIcon(tabId, senderUrl, status);
       working = false;
@@ -141,9 +188,14 @@ function handleUpdate(sender, key, value) {
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = sender.tab.id in tabStatus ? tabStatus[sender.tab.id] : {};
-      status[key] = value;
-      tabStatus[sender.tab.id] = status;
-      setTabStatus(tabStatus, function() { processTabState(sender.tab.id, sender.url); });
+      if (!('pageaccelblock' in status) || status['pageaccelblock'] == false) {
+        status[key] = value;
+        tabStatus[sender.tab.id] = status;
+        setTabStatus(tabStatus, function() { processTabState(sender.tab.id, sender.url); });
+      } else {
+        console.log("forbidden from handling update by pageaccelblock");
+        working = false;
+      }
     });
   });
 }
@@ -164,10 +216,39 @@ function handleClear(tabId) {
   console.log("got new clear " + tabId);
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
-      tabStatus[tabId] = {};
+      var status = tabId in tabStatus ? tabStatus[tabId] : {};
+      var lasturl = 'lasturl' in status ? status['lasturl'] : "";
+      var goback = 'goback' in status ? status['goback'] : false;
+      var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
+      status = {'lasturl' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock};
+      tabStatus[tabId] = status;
       setTabStatus(tabStatus, function() { working = false });
     });
   });
+}
+
+function handleGetBack(sender, callback) {
+  var theurl = sender.url;
+  checkAndWork(function() {
+    getTabStatus(function(tabStatus) {
+      var status = sender.tab.id in tabStatus ? tabStatus[sender.tab.id] : {};
+      var oldGoBack = 'goback' in status ? status['goback'] : false;
+      status['goback'] = false;
+      if (oldGoBack == true) {
+        console.log("blocking future changes");
+        status['pageaccelblock'] = true;
+      }
+      tabStatus[sender.tab.id] = status;
+      setTabStatus(tabStatus, function() {
+        console.log("going back " + oldGoBack + " from " + theurl);
+        callback(oldGoBack);
+        working = false;
+      });
+    });
+  });
+
+  // must return true to indicate that callback is going to be called later, asynchronously
+  return true;
 }
 
 function handleGetEnabled(sender, callback) {
@@ -220,6 +301,9 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       break;
     case "getEnabled":
       response = handleGetEnabled(sender, sendResponse);
+      break;
+    case "getBack":
+      response = handleGetBack(sender, sendResponse);
       break;
     case "toggleEnabled":
       handleToggleEnabled(sender, sendResponse);
