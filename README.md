@@ -24,4 +24,4 @@ Open the [PageAccel Chrome Web store link](https://chrome.google.com/webstore/de
 * Register simplified and standard domains as pairs, in case they're different.
  * This may also alleviate the need for the tld domain list
 * Remove unused tabs from storage if not used in last x days
-* Use double-back when detecting back button on AMP page that was navigated to by PageAccel
+* Stack for storing double-back ability, to allow double back multiple times in a row
