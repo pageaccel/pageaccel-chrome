@@ -23,11 +23,17 @@ along with PageAccel.  If not, see <http://www.gnu.org/licenses/>.
 <html>
   <head>
 	  <script src="popup.js"></script>
+	  <link rel="stylesheet" href="style.css" />
   </head>
 
   <body tabindex="1">
+    <table><tr><td><img src="canonical.png"/></td><td><h2>PageAccel</h2></td></tr></table>
 
-		<div id="enabledStatus">Enabled on this site</div>
-	
+    <div id="statusText">Status: Unknown</div>
+    <br />
+		<div><button id="enabledStatus">Please reload this page to enable PageAccel.</button></div>
+	  <br />
+	  <div><a id="moreinfo" href="https://github.com/pageaccel/pageaccel-chrome/blob/master/README.md#pageaccel-chrome-extension">More information...</a></div>
+    <div><a id="help" href="https://chrome.google.com/webstore/detail/pageaccel/homgapmnacbmbflidhpenianmeidfcjp/support">Help / questions / support</a></div>
 	</body>
 </html>

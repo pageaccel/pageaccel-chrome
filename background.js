@@ -263,7 +263,7 @@ function handleGetEnabled(sender, callback) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
       var hostname = new URL(tabs[0].url).hostname;
       var domain = publicSuffixList.getDomain(hostname);
-      callback((domain in sitestatus ? sitestatus[domain] : true) ? "Simplified view is Enabled" : "Simplified view is Disabled");
+      callback(domain in sitestatus ? sitestatus[domain] : true);
     });
   });
   // must return true to indicate that callback is going to be called later, asynchronously
