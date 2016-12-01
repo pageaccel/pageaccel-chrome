@@ -321,4 +321,30 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   return response;
 });
 
+var uninstallTimer = null;
+var uninstallUrlBase = "http://pageaccel.raack.info/uninstall_survey"
+  
+function updateUninstallUrl() {
+  getFromStorage('installTime', function(item) {
+    console.log("updating install url");
+    chrome.runtime.setUninstallURL(uninstallUrlBase + "?installed_for=" + (Date.now() - ('time' in item ? item['time'] : Date.now())));
+  });
+}
+
+updateUninstallUrl();
+
+function setUpInstallUninstallActions() {
+  getFromStorage('installTime', function(item) {
+    if (!('time' in item)) {
+      setToStorage('installTime', {'time':Date.now()}, function() {})
+    }
+  })
+  if(uninstallTimer == null) {
+    // update uninstall URL every 5 minutes
+    uninstallTimer = setInterval(updateUninstallUrl, 60 * 1000);
+  }
+}
+
 primePublicSuffixList();
+
+setUpInstallUninstallActions();
