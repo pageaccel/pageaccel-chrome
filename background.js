@@ -68,7 +68,7 @@ function updatePageActionIcon(tabId, senderUrl, status) {
     chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Standard version of this page' });
     chrome.pageAction.show(tabId);
     console.log("setting to is on amp page icon");
-  } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && !isAmpBlacklisted(status.ampUrl)) {
+  } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage) {
     console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
     // we are not currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'amplify.png' });
@@ -96,10 +96,6 @@ function isSimplifyEnabled(sitestatus, url) {
   return enabled;
 }
 
-var blacklistedDomains = new Set();
-blacklistedDomains.add("nytimes.com");
-blacklistedDomains.add("allrecipes.com");
-
 chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
   var thewindow = this;
   checkAndWork(function() {
@@ -125,6 +121,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
 });
 
 chrome.webNavigation.onCompleted.addListener(function(data) {
+  // Fired when a document, including the resources it refers to, is completely loaded and initialized.
+  // this means after all messages from html scanning that might send messages to alter pageaccel behavior
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = data.tabId in tabStatus ? tabStatus[data.tabId] : {};
@@ -134,15 +132,6 @@ chrome.webNavigation.onCompleted.addListener(function(data) {
     });
   });
 });
-
-function isAmpBlacklisted(url) {
-  // some websites' amp pages 302 redirect back to the canonical page automatically (such as mobile.nytimes.com when using a desktop browser user agent)
-  // i experimented with modifying the user agent header to a mobile header for those requests, but chrome disallows header manipulation from "event pages" (this type of extension)
-  // so we're going to blacklist some urls here so we don't attempt to AMP load them.
-  var hostname = new URL(url).hostname;
-  var domain = publicSuffixList.getDomain(hostname);
-  return blacklistedDomains.has(domain);
-}
 
 /*
  * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
@@ -173,13 +162,14 @@ function processTabState(tabId, senderUrl) {
         working = false;
         chrome.tabs.update(tabId, { url : status.canonicalUrl });
       });
-    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl) && !isAmpBlacklisted(status.ampUrl)) {
+    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl)) {
       console.log("switching to amp url");
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
         lastUrl.push(senderUrl);
       }
       status['swithedurls'] = lastUrl;
+      status['lastSwitchedUrl'] = senderUrl;
       tabStatus[tabId] = status;
       console.log("setting previous url to " + senderUrl);
       setTabStatus(tabStatus, function() {
@@ -223,13 +213,21 @@ function handleAmpUrl(sender, ampUrl) {
   handleUpdate(sender, 'ampUrl', ampUrl);
 }
 
-function handleClear(tabId) {
+function handleClear(sender) {
+  var tabId = sender.tab.id;
   console.log("got new clear " + tabId);
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = tabId in tabStatus ? tabStatus[tabId] : {};
       var lasturl = 'swithedurls' in status ? status['swithedurls'] : [];
       var goback = 'goback' in status ? status['goback'] : false;
+      if ('lastSwitchedUrl' in status && status['lastSwitchedUrl'] == sender.url) {
+        // the last thing we did was switch from a canonical url, and now we've arrived back at that canonical url
+        // so there must have been a redirect that brought us back
+        // so let's not force another amp redirect
+        console.log("likely redirect detected; not loading pageaccel for this page load");
+        status['pageaccelblock'] = true;
+      }
       var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
       status = {'swithedurls' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock};
       tabStatus[tabId] = status;
@@ -295,7 +293,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   var response = false;
   switch (message.method) {
     case "clear":
-      handleClear(sender.tab.id);
+      handleClear(sender);
       break;
     case "onAmpPage":
       handleOnAmpPage(sender, message.data);
