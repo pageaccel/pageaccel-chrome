@@ -229,7 +229,7 @@ function handleClear(sender) {
         status['pageaccelblock'] = true;
       }
       var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
-      status = {'swithedurls' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock};
+      status = {'swithedurls' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock, 'lastTabLoadTime' : Date.now()};
       tabStatus[tabId] = status;
       setTabStatus(tabStatus, function() { working = false });
     });
