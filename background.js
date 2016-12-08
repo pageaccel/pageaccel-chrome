@@ -174,7 +174,7 @@ function processTabState(tabId, senderUrl) {
       console.log("setting previous url to " + senderUrl);
       setTabStatus(tabStatus, function() {
         working = false;
-        chrome.tabs.update(tabId, { url : status.ampUrl });
+        chrome.tabs.update(tabId, { url : status.ampUrl.startsWith('/') ? (status['origin'] + status.ampUrl) : status.ampUrl });
       });
     } else {
       updatePageActionIcon(tabId, senderUrl, status);
@@ -230,6 +230,18 @@ function handleClear(sender) {
       }
       var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
       status = {'swithedurls' : lasturl, 'goback' : goback, 'pageaccelblock' : pageaccelblock, 'lastTabLoadTime' : Date.now()};
+      tabStatus[tabId] = status;
+      setTabStatus(tabStatus, function() { working = false });
+    });
+  });
+}
+
+function handleOrigin(tabId, origin) {
+  checkAndWork(function() {
+    getTabStatus(function(tabStatus) {
+      var status = tabId in tabStatus ? tabStatus[tabId] : {};
+      status['origin'] = origin;
+      console.log('got new origin ' + origin);
       tabStatus[tabId] = status;
       setTabStatus(tabStatus, function() { working = false });
     });
@@ -294,6 +306,9 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   switch (message.method) {
     case "clear":
       handleClear(sender);
+      break;
+    case "origin":
+      handleOrigin(sender.tab.id, message.data);
       break;
     case "onAmpPage":
       handleOnAmpPage(sender, message.data);

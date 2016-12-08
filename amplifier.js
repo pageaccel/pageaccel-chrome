@@ -44,6 +44,12 @@ chrome.runtime.sendMessage({
   method: "clear"
 });
 
+chrome.runtime.sendMessage({
+  sentinel: "__SIMPLIFYMESSAGE__",
+  method: "origin",
+  data: location.origin
+})
+
 // look for amp header
 chrome.runtime.sendMessage({
   sentinel: "__SIMPLIFYMESSAGE__",
