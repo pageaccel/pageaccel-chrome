@@ -133,6 +133,16 @@ chrome.webNavigation.onCompleted.addListener(function(data) {
   });
 });
 
+function buildAmpUrl(status) {
+  if (status.ampUrl.startsWith('//')) {
+    return status['origin'].split("/")[0] + status.ampUrl;
+  } else if (status.ampUrl.startsWith('/')) {
+    return status['origin'] + status.ampUrl;
+  } else {
+    return status.ampUrl;
+  }
+}
+
 /*
  * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
  * 
@@ -174,7 +184,7 @@ function processTabState(tabId, senderUrl) {
       console.log("setting previous url to " + senderUrl);
       setTabStatus(tabStatus, function() {
         working = false;
-        chrome.tabs.update(tabId, { url : status.ampUrl.startsWith('/') ? (status['origin'] + status.ampUrl) : status.ampUrl });
+        chrome.tabs.update(tabId, { url : buildAmpUrl(status) });
       });
     } else {
       updatePageActionIcon(tabId, senderUrl, status);
