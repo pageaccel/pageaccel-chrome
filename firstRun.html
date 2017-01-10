@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<!--
+
+Copyright 2016 Taylor Raack.
+
+This file is part of PageAccel.
+
+PageAccel is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+PageAccel is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with PageAccel.  If not, see <http://www.gnu.org/licenses/>.
+-->
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Thank you for installing PageAccel!</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="row lightbg">
+        <div class="col-md-12 text-center">
+          <img src="amplifier128.png" class="img-responsive center-block" alt="PageAccel logo" /><br />
+          <h1>Thank you for installing PageAccel!</h1>
+        </div>
+      </div>
+      <div class="row vlightbg">
+        <div class="col-md-12 text-center">
+          <br />
+          <div id="start">
+          <h3>During this quick, 1 minute tutorial, two windows will open to show you the difference between simplified and standard (non-simplified) pages.</h3>
+          <br />
+          Once you get a quick look at each once, you should close them to return to this tutorial page.<br />
+          <br />
+          <button id="starttutorial">Let's start this quick tutorial!</button>
+          </div>
+          <div id="instructions1" class="hidden">
+          <h3>To start, let's view a page <strong>without PageAccel</strong>.</h3>
+          <br />
+
+          <strong>After you're done briefly looking at the page that opens, close that new window / tab so you're back to this tutorial.</strong><br />
+          <br />
+          <button id="shownopageaccelpage">Click me to look at a regular page - then close the window after you see it briefly.</button>
+          </div>
+
+          <div id="instructions2" class="hidden">
+          <h3>Lots of junk on that page, eh?</h3>
+          <br />
+          Now, I'll turn on <strong>PageAccel</strong> and we'll view <strong>the simplified version</strong> of that page!<br />
+          <br />
+          <button id="showpageaccelpage">Click me to look at the simplified version of that page - then close the window after you see it briefly.</button>
+          </div>
+
+          <div id="instructions3" class="hidden">
+          <h3>Much more streamlined, right? You've just seen what <strong>PageAccel</strong> will do for you, <strong>automatically</strong>, on pages which provide simplified content.</h3><br />
+          <br />
+          When you're on a page, look for the <strong>PageAccel</strong> icon in the URL bar.<br />
+          <ul>
+          <li><strong>If it's green</strong>, like this: <img src="canonical.png" />, then you are browsing <strong>a simplified web page</strong>.</li>
+          <li><strong>If it's yellow</strong>, like this: <img src="amplify.png" />. then you have elected to view <strong>the normal version of a web page</strong> which has simplified content available.</li>
+          </ul>
+          <br />
+          <strong>You can toggle</strong> between simplified and standard content by clicking the <img src="amplify.png" /> or <img src="canonical.png" /> icon and clicking "Enable" or "Disable" for that web site.
+          <br />
+          <h3>That's it!</h3>
+          We hope you like PageAccel. Enjoy!
+          <br />
+          (You may now close this tutorial window / tab.)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  
+    <script src="firstRun.js"></script>
+  </body>
+</html>

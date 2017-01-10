@@ -290,21 +290,22 @@ function handleGetEnabled(sender, callback) {
   return true;
 }
 
-function handleToggleEnabled(sender, callback) {
+function handleToggleEnabled(sender, inputhostname, callback) {
   getSiteStatus(function(sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      var hostname = new URL(tabs[0].url).hostname;
+      var hostname = new URL(inputhostname != null ? inputhostname : tabs[0].url).hostname;
       var domain = publicSuffixList.getDomain(hostname);
       // flip domain enabled, or set to false if it's never been set
       sitestatus[domain] = (domain in sitestatus) ? !sitestatus[domain] : false;
       console.log("setting simplify enabled for " + domain + " to " + sitestatus[domain]);
-      setSiteStatus(sitestatus, function() {
+      setSiteStatus(sitestatus, inputhostname != null ? callback : function() {
         // reload the page, which will force the proper loading to occur again
         console.log("reloading");
         chrome.tabs.reload(tabs[0].id);
       });
     });
   });
+  return inputhostname != null;
 }
 
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
@@ -336,7 +337,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       response = handleGetBack(sender, sendResponse);
       break;
     case "toggleEnabled":
-      handleToggleEnabled(sender, sendResponse);
+      response = handleToggleEnabled(sender, message.data, sendResponse);
     default: 
       break;
   }
@@ -356,6 +357,17 @@ function updateUninstallUrl() {
 
 updateUninstallUrl();
 
+function showSplashScreenOnFirstRun() {
+  getFromStorage('tutorialShown', function(item) {
+    if (!('shown' in item)) {
+      chrome.tabs.create({
+        url: chrome.extension.getURL("firstRun.html")
+      });
+      setToStorage('tutorialShown', {'shown':true}, function() {});
+    }
+  });
+}
+
 function setUpInstallUninstallActions() {
   getFromStorage('installTime', function(item) {
     if (!('time' in item)) {
@@ -371,3 +383,5 @@ function setUpInstallUninstallActions() {
 primePublicSuffixList();
 
 setUpInstallUninstallActions();
+showSplashScreenOnFirstRun();
+
