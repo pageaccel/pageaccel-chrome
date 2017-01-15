@@ -41,4 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
     event.preventDefault();
     chrome.tabs.create({url: event.currentTarget.href });
   });
+  document.getElementById('tutorial1').addEventListener('click', function(event){
+    event.preventDefault();
+    chrome.tabs.create({url: event.currentTarget.href });
+  });
+  document.getElementById('tutorial2').addEventListener('click', function(event){
+    event.preventDefault();
+    chrome.tabs.create({url: event.currentTarget.href });
+  });
 });

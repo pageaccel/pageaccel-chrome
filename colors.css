@@ -19,23 +19,33 @@ along with PageAccel.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 body {
-	 font-family: Segoe UI, Arial, sans-serif;
+   color: #004b25;
 }
 
-.row-margin {
-  padding-top: 10px;
-  padding-bottom: 10px
+.enabled {
+  background-color: #70e270;
 }
 
-.arrow {
-	padding-top: 100px;
+.disabled {
+  background-color: #ffda81;
 }
 
-#enabledStatus {
-	font-weight: bold;
+.vlightbg {
+  background-color: #a4ffd1;
 }
 
-#statusText {
-	font-weight: bold;
-	font-size: 24px;
+.lightbg {
+ background-color: #00ff7d;
+}
+
+.mediumbg {
+  background-color: #00578a;
+}
+
+hr {
+	border-color: #00753a;
+}
+
+.darkbg {
+  background-color: #2333ff;
 }

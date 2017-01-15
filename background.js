@@ -361,7 +361,7 @@ function showSplashScreenOnFirstRun() {
   getFromStorage('tutorialShown', function(item) {
     if (!('shown' in item)) {
       chrome.tabs.create({
-        url: chrome.extension.getURL("firstRun.html")
+        url: chrome.extension.getURL("firstRun2.html")
       });
       setToStorage('tutorialShown', {'shown':true}, function() {});
     }
