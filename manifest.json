@@ -3,7 +3,7 @@
   "name": "PageAccel",
   "short_name": "PageAccel",
   "description": "Loads streamlined, accelerated, easy-to-use web pages on websites that offer it.",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "author": "PageAccel Team",
   "icons": { 
            "48": "amplifier48.png",
