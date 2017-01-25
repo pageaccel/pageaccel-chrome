@@ -87,10 +87,8 @@ function checkAndWork(fcn) {
   }
 }
 
-function isSimplifyEnabled(sitestatus, url) {
-  console.log("checking simplify enabled for url " + url);
-  var hostname = new URL(url).hostname;
-  var domain = publicSuffixList.getDomain(hostname);
+function isSimplifyEnabled(thisTabStatus, sitestatus) {
+  var domain = getMasterDomain(thisTabStatus);
   var enabled = domain in sitestatus ? sitestatus[domain] : true;
   console.log("simplify " + (enabled ? "enabled" : "disabled") + " for domain " + domain);
   return enabled;
@@ -159,7 +157,7 @@ function processTabState(tabId, senderUrl) {
   console.log("processing tab state");
   getTabAndSiteStatus(function(tabStatus, sitestatus) {
     var status = tabId in tabStatus ? tabStatus[tabId] : {};
-    if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(sitestatus, senderUrl)) {
+    if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(status, sitestatus)) {
       console.log("switching to canonical url");
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
@@ -172,7 +170,7 @@ function processTabState(tabId, senderUrl) {
         working = false;
         chrome.tabs.update(tabId, { url : status.canonicalUrl });
       });
-    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(sitestatus, senderUrl)) {
+    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(status, sitestatus)) {
       console.log("switching to amp url");
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
@@ -279,10 +277,9 @@ function handleGetBack(sender, callback) {
 }
 
 function handleGetEnabled(sender, callback) {
-  getSiteStatus(function(sitestatus) {
+  getTabAndSiteStatus(function(tabstatus, sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      var hostname = new URL(tabs[0].url).hostname;
-      var domain = publicSuffixList.getDomain(hostname);
+      var domain = getMasterDomain(tabstatus[tabs[0].id]);
       callback(domain in sitestatus ? sitestatus[domain] : true);
     });
   });
@@ -290,31 +287,18 @@ function handleGetEnabled(sender, callback) {
   return true;
 }
 
+function getMasterDomain(thisTabStatus) {
+  return publicSuffixList.getDomain(new URL(thisTabStatus.onAmpPage == true ? thisTabStatus.canonicalUrl : thisTabStatus.origin).hostname)
+}
+
 function handleToggleEnabled(sender, inputhostname, callback) {
   getTabAndSiteStatus(function(tabstatus, sitestatus) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      var status = tabs[0].id in tabstatus ? tabstatus[tabs[0].id] : {};
-
-      var ampDomain = null;
-      var canonicalDomain = null;
-      if (inputhostname != null) {
-        ampDomain = publicSuffixList.getDomain(new URL(inputhostname).hostname);
-        canonicalDomain = ampDomain;
-      } else {
-        ampDomain = status.ampUrl != null ? publicSuffixList.getDomain(new URL(status.ampUrl).hostname) : (status.onAmpPage == true && status.origin != null ? publicSuffixList.getDomain(new URL(status.origin).hostname) : null);
-        canonicalDomain = status.canonicalUrl != null ? publicSuffixList.getDomain(new URL(status.canonicalUrl).hostname) : (status.onAmpPage == false && status.origin != null ? publicSuffixList.getDomain(new URL(status.origin).hostname) : null);
-      }
-
-      var masterDomain = status.onAmpPage ? ampDomain : canonicalDomain;
-      var altDomain = status.onAmpPage ? canonicalDomain : ampDomain;
+      var masterDomain = inputhostname != null ? publicSuffixList.getDomain(new URL(inputhostname).hostname) : getMasterDomain(tabstatus[tabs[0].id]);
 
       // flip domain enabled, or set to false if it's never been set
       sitestatus[masterDomain] = (masterDomain in sitestatus) ? !sitestatus[masterDomain] : false;
       console.log("setting simplify enabled for " + masterDomain + " to " + sitestatus[masterDomain]);
-      if (masterDomain != altDomain) {
-        sitestatus[altDomain] = sitestatus[masterDomain];
-        console.log("setting simplify enabled for " + altDomain + " to " + sitestatus[altDomain]);
-      }
 
       setSiteStatus(sitestatus, inputhostname != null ? callback : function() {
         // reload the page, which will force the proper loading to occur again
@@ -398,28 +382,7 @@ function setUpInstallUninstallActions() {
   }
 }
 
-function clearFalseSitesToFixCyclicRedirect() {
-  getFromStorage('fix-cyclic-redirect-2017-01-23', function(item) {
-    if (!('done' in item)) {
-      // reset all site status
-      getSiteStatus(function(sitestatus) {
-        var newStatus = {}
-        // remove all site statuses with false keys to prevent cyclic redirect loops due
-        Object.keys(sitestatus).forEach(function (site) {
-          var status = sitestatus[site]
-          if (status == true) { newStatus[site] = true; }
-        });
-        setSiteStatus(newStatus, function() {
-          setToStorage('fix-cyclic-redirect-2017-01-23', {'done':true}, function() {});
-        });
-      });
-    }
-  })
-}
-
 primePublicSuffixList();
 
 setUpInstallUninstallActions();
 showSplashScreenOnFirstRun();
-clearFalseSitesToFixCyclicRedirect();
-
