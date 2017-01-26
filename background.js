@@ -21,6 +21,10 @@ var working = false;
 var publicSuffixList = this.publicSuffixList;
 var thestorage = window.localStorage;
 
+function logpa(message, tabId) {
+  console.log(new Date().toISOString() + (tabId ? (" - tab " + tabId) : "") + " - " + message);
+}
+
 function getFromStorage(key, callback) {
   var item = JSON.parse(thestorage.getItem(key));
   callback(item != null ? item : {});
@@ -60,21 +64,21 @@ function primePublicSuffixList() {
 }
 
 function updatePageActionIcon(tabId, senderUrl, status) {
-  console.log("updating page action icon; canonical: " + status.canonicalUrl + "; amp: " + status.ampUrl + "; on amp page: " + status.onAmpPage); 
+  logpa("updating page action icon; canonical: " + status.canonicalUrl + "; amp: " + status.ampUrl + "; on amp page: " + status.onAmpPage, tabId); 
   if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage) {
-    console.log("canonical url is " + status.canonicalUrl + " and we are on an amp page")
+    logpa("canonical url is " + status.canonicalUrl + " and we are on an amp page", tabId)
     // we are currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'canonical.png' });
     chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the Standard version of this page' });
     chrome.pageAction.show(tabId);
-    console.log("setting to is on amp page icon");
+    logpa("setting to is on amp page icon", tabId);
   } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage) {
-    console.log("amp url is " + status.ampUrl + " and we are NOT on an amp page")
+    logpa("amp url is " + status.ampUrl + " and we are NOT on an amp page", tabId)
     // we are not currently viewing an amp page
     chrome.pageAction.setIcon({ tabId : tabId, path : 'amplify.png' });
     chrome.pageAction.setTitle({ tabId : tabId, title : 'Show the accelerated version of this page' });
     chrome.pageAction.show(tabId);
-    console.log("setting to is on canonical page icon");
+    logpa("setting to is on canonical page icon", tabId);
   }
 }
 
@@ -87,10 +91,10 @@ function checkAndWork(fcn) {
   }
 }
 
-function isSimplifyEnabled(thisTabStatus, sitestatus) {
+function isSimplifyEnabled(tabId, thisTabStatus, sitestatus) {
   var domain = getMasterDomain(thisTabStatus);
   var enabled = domain in sitestatus ? sitestatus[domain] : true;
-  console.log("simplify " + (enabled ? "enabled" : "disabled") + " for domain " + domain);
+  logpa("simplify " + (enabled ? "enabled" : "disabled") + " for domain " + domain, tabId);
   return enabled;
 }
 
@@ -105,8 +109,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
         status['swithedurls'] = lastUrl;
         status['goback'] = true;
         status['pageaccelblock'] = true;
-        console.log("blocking future changes");
-        console.log("setting go back to true; lasturl was " + data.url);
+        logpa("blocking future changes", data.tabId);
+        logpa("setting go back to true; lasturl was " + data.url, data.tabId);
         tabStatus[data.tabId] = status;
         setTabStatus(tabStatus, function() { working = false; });
       } else {
@@ -154,24 +158,24 @@ function buildAmpUrl(status) {
  */
 
 function processTabState(tabId, senderUrl) {
-  console.log("processing tab state");
+  logpa("processing tab state", tabId);
   getTabAndSiteStatus(function(tabStatus, sitestatus) {
     var status = tabId in tabStatus ? tabStatus[tabId] : {};
-    if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(status, sitestatus)) {
-      console.log("switching to canonical url");
+    if (status.canonicalUrl != null && status.canonicalUrl != senderUrl && status.onAmpPage != null && status.onAmpPage && !isSimplifyEnabled(tabId, status, sitestatus)) {
+      logpa("switching to canonical url", tabId);
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
         lastUrl.push(senderUrl);
       }
       status['swithedurls'] = lastUrl;
       tabStatus[tabId] = status;
-      console.log("setting previous url to " + senderUrl);
+      logpa("setting previous url to " + senderUrl, tabId);
       setTabStatus(tabStatus, function() {
         working = false;
         chrome.tabs.update(tabId, { url : status.canonicalUrl });
       });
-    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(status, sitestatus)) {
-      console.log("switching to amp url");
+    } else if (status.ampUrl != null && status.onAmpPage != null && !status.onAmpPage && isSimplifyEnabled(tabId, status, sitestatus)) {
+      logpa("switching to amp url", tabId);
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if(lastUrl.length == 0 || lastUrl[lastUrl.length - 1] != senderUrl) {
         lastUrl.push(senderUrl);
@@ -179,7 +183,7 @@ function processTabState(tabId, senderUrl) {
       status['swithedurls'] = lastUrl;
       status['lastSwitchedUrl'] = senderUrl;
       tabStatus[tabId] = status;
-      console.log("setting previous url to " + senderUrl);
+      logpa("setting previous url to " + senderUrl, tabId);
       setTabStatus(tabStatus, function() {
         working = false;
         chrome.tabs.update(tabId, { url : buildAmpUrl(status) });
@@ -193,7 +197,7 @@ function processTabState(tabId, senderUrl) {
 
 function handleUpdate(sender, key, value) {
   if (value == null) throw key + " cannot be null";
-  console.log("got new " + key + ": " + value);
+  logpa("got new " + key + ": " + value, sender.tab.id);
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = sender.tab.id in tabStatus ? tabStatus[sender.tab.id] : {};
@@ -202,7 +206,7 @@ function handleUpdate(sender, key, value) {
         tabStatus[sender.tab.id] = status;
         setTabStatus(tabStatus, function() { processTabState(sender.tab.id, sender.url); });
       } else {
-        console.log("forbidden from handling update by pageaccelblock");
+        logpa("forbidden from handling update by pageaccelblock", sender.tab.id);
         working = false;
       }
     });
@@ -223,7 +227,7 @@ function handleAmpUrl(sender, ampUrl) {
 
 function handleClear(sender) {
   var tabId = sender.tab.id;
-  console.log("got new clear " + tabId);
+  logpa("got new clear", tabId);
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = tabId in tabStatus ? tabStatus[tabId] : {};
@@ -233,7 +237,7 @@ function handleClear(sender) {
         // the last thing we did was switch from a canonical url, and now we've arrived back at that canonical url
         // so there must have been a redirect that brought us back
         // so let's not force another amp redirect
-        console.log("likely redirect detected; not loading pageaccel for this page load");
+        logpa("likely redirect detected; not loading pageaccel for this page load", tabId);
         status['pageaccelblock'] = true;
       }
       var pageaccelblock = 'pageaccelblock' in status ? status['pageaccelblock'] : false;
@@ -249,7 +253,7 @@ function handleOrigin(tabId, origin) {
     getTabStatus(function(tabStatus) {
       var status = tabId in tabStatus ? tabStatus[tabId] : {};
       status['origin'] = origin;
-      console.log('got new origin ' + origin);
+      logpa('got new origin ' + origin, tabId);
       tabStatus[tabId] = status;
       setTabStatus(tabStatus, function() { working = false });
     });
@@ -265,7 +269,7 @@ function handleGetBack(sender, callback) {
       status['goback'] = false;
       tabStatus[sender.tab.id] = status;
       setTabStatus(tabStatus, function() {
-        console.log("going back " + oldGoBack + " from " + theurl);
+        logpa("going back " + oldGoBack + " from " + theurl, sender.tab.id);
         callback(oldGoBack);
         working = false;
       });
@@ -298,11 +302,11 @@ function handleToggleEnabled(sender, inputhostname, callback) {
 
       // flip domain enabled, or set to false if it's never been set
       sitestatus[masterDomain] = (masterDomain in sitestatus) ? !sitestatus[masterDomain] : false;
-      console.log("setting simplify enabled for " + masterDomain + " to " + sitestatus[masterDomain]);
+      logpa("setting simplify enabled for " + masterDomain + " to " + sitestatus[masterDomain], tabs[0].id);
 
       setSiteStatus(sitestatus, inputhostname != null ? callback : function() {
         // reload the page, which will force the proper loading to occur again
-        console.log("reloading");
+        logpa("reloading", tabs[0].id);
         chrome.tabs.reload(tabs[0].id);
       });
     });
@@ -314,7 +318,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.sentinel === undefined || message.sentinel != "__SIMPLIFYMESSAGE__") {
     return;
   }
-  console.log("received action " + message.method + " with data " + message.data + " url " + sender.url);
+  var tabId = sender.tab != null ? sender.tab.id : null;
+  logpa("received action " + message.method + " with data " + message.data + " url " + sender.url, tabId);
   var response = false;
   switch (message.method) {
     case "clear":
@@ -343,7 +348,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     default: 
       break;
   }
-  console.log("completed action " + message.method);
+  logpa("completed action " + message.method, tabId);
   return response;
 });
 
@@ -352,7 +357,7 @@ var uninstallUrlBase = "http://pageaccel.raack.info/uninstall_survey"
   
 function updateUninstallUrl() {
   getFromStorage('installTime', function(item) {
-    console.log("updating install url");
+    logpa("updating install url");
     chrome.runtime.setUninstallURL(uninstallUrlBase + "?installed_for=" + (Date.now() - ('time' in item ? item['time'] : Date.now())));
   });
 }
