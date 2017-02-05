@@ -20,6 +20,7 @@ Open the [PageAccel Chrome Web store link](https://chrome.google.com/webstore/de
 
 ## TODO
 
+* Add "Send Feedback / Broken Page" item to menu to allow direct feedback, positive and negative. Include page currently on and message with feedback. Send this to amplifierteam20@gmail.com.
 * Prompt user for feedback (rating, free text, or both) after having visted several simplified pages. Indicated to them which ones were simplified.
 * Register simplified and standard domains as pairs, in case they're different.
  * This may also alleviate the need for the tld domain list
