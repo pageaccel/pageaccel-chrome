@@ -98,13 +98,18 @@ function isSimplifyEnabled(tabId, thisTabStatus, sitestatus) {
   return enabled;
 }
 
-chrome.webNavigation.onBeforeNavigate.addListener(function(data) {
+chrome.webNavigation.onCommitted.addListener(function(data) {
   var thewindow = this;
+  if (data.transitionQualifiers != 'forward_back') {
+	// not a user click on forward or back; ignore
+	return;
+  }
   checkAndWork(function() {
     getTabStatus(function(tabStatus) {
       var status = data.tabId in tabStatus ? tabStatus[data.tabId] : {};
       var lastUrl = 'swithedurls' in status ? status['swithedurls'] : [];
       if (lastUrl.length > 0 && lastUrl[lastUrl.length-1] == data.url) {
+        logpa("detected forward/backward change with previous url; assuming back button was clicked");
         lastUrl.pop();
         status['swithedurls'] = lastUrl;
         status['goback'] = true;
@@ -168,6 +173,8 @@ function processTabState(tabId, senderUrl) {
         lastUrl.push(senderUrl);
       }
       status['swithedurls'] = lastUrl;
+      // block other events from triggering duplicate url change events until end of load, which confuse chrome (it might just decide not to switch urls)
+      status['pageaccelblock'] = true;
       tabStatus[tabId] = status;
       logpa("setting previous url to " + senderUrl, tabId);
       setTabStatus(tabStatus, function() {
@@ -182,6 +189,8 @@ function processTabState(tabId, senderUrl) {
       }
       status['swithedurls'] = lastUrl;
       status['lastSwitchedUrl'] = senderUrl;
+      // block other events from triggering duplicate url change events until end of load, which confuse chrome (it might just decide not to switch urls)
+      status['pageaccelblock'] = true;
       tabStatus[tabId] = status;
       logpa("setting previous url to " + senderUrl, tabId);
       setTabStatus(tabStatus, function() {
