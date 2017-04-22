@@ -25,6 +25,4 @@ Open the [PageAccel Chrome Web store link](https://chrome.google.com/webstore/de
 * Register simplified and standard domains as pairs, in case they're different.
  * This may also alleviate the need for the tld domain list
 * Remove unused tabs from storage if not used in last x days
-* After either(days active > 2, pages viewed 500), tell user how many pages have been accelerated and show them which ones. If the percentage is high, show them the % of pages, else, just tell them how many pages. Tell them how many seconds / bytes they've saved by using pageaccel.
- * Do this at some regular intervals
 * Provide stats button in pageaccel so user can see stats anytime.

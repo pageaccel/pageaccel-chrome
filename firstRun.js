@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Taylor Raack <taylor@raack.info>.
+Copyright 2016,2017 Taylor Raack <taylor@raack.info>.
 
 This file is part of PageAccel.
 
@@ -36,6 +36,14 @@ $( document ).ready(function() {
       window.open("http://www.foodnetwork.com/recipes/tyler-florence/spaghetti-alla-carbonara-recipe.html");
       $('#instructions2').addClass("hidden");
       $('#instructions3').removeClass("hidden");
+    });
+  });
+
+  $("#promptForNavigation").click(function() {
+    chrome.permissions.request({permissions: ['notifications']}, function(granted) {
+      if (granted) {
+        window.close();
+      }
     });
   });
 });

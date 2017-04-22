@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Taylor Raack.
+Copyright 2016,2017 Taylor Raack.
 
 This file is part of PageAccel.
 
@@ -150,6 +150,40 @@ function buildAmpUrl(status) {
   }
 }
 
+function recordAmpSwitched() {
+  getFromStorage('ampSwitched', function(item) {
+    var newCount = item['count'] + 1;
+    if (Number.isInteger(Math.log(newCount)/Math.log(5))) {
+      // display a notification and increase the counter once the user has closed the notification
+
+      displayNotification(
+        newCount == 1 ?
+          "You're viewing your first PageAccel simplified page!" :
+          "PageAccel is still simplifying your web browsing experience!",
+        newCount == 1 ?
+          "Enjoy!" :
+          "You've viewed " + newCount + " simplified pages with PageAccel.", function () {
+        setToStorage('ampSwitched', {'count':newCount}, function() {});
+      });
+    } else {
+      // don't need to show a notification right now, just increase counter
+      setToStorage('ampSwitched', {'count':newCount}, function() {});
+    }
+  });
+}
+
+function displayNotification(title, message, onClose) {
+  chrome.permissions.contains({permissions: ['notifications']}, function(result) {
+    if (result) {
+      chrome.notifications.create(
+        { type: "basic", title: title, message: message, iconUrl: "amplifier128.png"},
+        function(notificationId) {
+          chrome.notifications.onClosed.addListener(onClose);
+      });
+    }
+  });
+}
+
 /*
  * AMP document discovery (https://www.ampproject.org/docs/reference/spec#amp-document-discovery)
  * 
@@ -195,6 +229,7 @@ function processTabState(tabId, senderUrl) {
       logpa("setting previous url to " + senderUrl, tabId);
       setTabStatus(tabStatus, function() {
         working = false;
+        recordAmpSwitched();
         chrome.tabs.update(tabId, { url : buildAmpUrl(status) });
       });
     } else {
@@ -396,7 +431,27 @@ function setUpInstallUninstallActions() {
   }
 }
 
+function primeAmpSwitchedCount() {
+  getFromStorage('ampSwitched', function(item) {
+    if (!('count' in item)) {
+      setToStorage('ampSwitched', {'count':0}, function() {});
+    }
+  });
+}
+
+function verifyNotificationPermissions() {
+  chrome.permissions.contains({permissions: ['notifications']}, function(result) {
+    if (!result) {
+      chrome.tabs.create({
+        url: chrome.extension.getURL("nonavigation.html")
+      });
+    }
+  });
+}
+
 primePublicSuffixList();
 
 setUpInstallUninstallActions();
 showSplashScreenOnFirstRun();
+primeAmpSwitchedCount();
+verifyNotificationPermissions();

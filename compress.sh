@@ -11,6 +11,7 @@ firstRun2.html \
 firstRun.js \
 LICENSE \
 manifest.json \
+nonavigation.html \
 popup.html \
 popup.js \
 publicsuffixlist.js \
