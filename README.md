@@ -16,7 +16,7 @@ PageAccel does *not* create any of its content, nor does it alter pages by itsel
 
 ## Installation
 
-Open the [PageAccel Chrome Web store link](https://chrome.google.com/webstore/detail/pageaccel/homgapmnacbmbflidhpenianmeidfcjp?hl=en-US) and follow the prompts.
+Open the [PageAccel Home Page](http://pageaccel.raack.info) and click the installation button.
 
 ## TODO
 
