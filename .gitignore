@@ -1,3 +1,5 @@
 /.project
 chrome/screenshot*.jpg
 /pageaccel.zip
+node_modules
+npm-debug.log
