@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "js": ["amplifier.js"],
-      "matches": ["http://*/*","https://*/*"],
+      "matches": ["<all_urls>"],
       "run_at" : "document_start"
     }
   ],
